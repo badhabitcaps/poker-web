@@ -1,44 +1,52 @@
 'use client';
 
 import { HandCard } from "@/components/hand-card";
-
-// This would typically come from your database
-const MOCK_HANDS = [
-  {
-    id: "1",
-    title: "Tough River Decision in 3-Bet Pot",
-    stakes: "NL100",
-    tags: ["River Decision", "3-Bet Pot", "Heads Up"],
-    hero_cards: ["As", "Ks"],
-    board: ["Qd", "Jd", "2c", "7h", "3d"],
-    created_at: "2024-03-15T10:00:00Z",
-    is_quiz: true,
-    comment_count: 12,
-    upvote_count: 5,
-    username: "pokerpro",
-    avatar_url: null,
-    user_id: "1",
-    quiz_question: "What should Hero do on the river facing this bet?",
-  },
-  {
-    id: "2",
-    title: "Interesting Bluff Catch Spot",
-    stakes: "NL50",
-    tags: ["Bluff Catch", "Live", "Cash Game"],
-    hero_cards: ["Ah", "Kh"],
-    board: ["Qd", "Jd", "2c", "7h", "3d"],
-    created_at: "2024-03-14T15:30:00Z",
-    is_quiz: false,
-    comment_count: 8,
-    upvote_count: 3,
-    username: "cardplayer",
-    avatar_url: null,
-    user_id: "2",
-    hand_summary: "Hero faces a tough decision on the river with top pair top kicker...",
-  },
-];
+import { useEffect, useState } from "react";
 
 export default function Home() {
+  const [hands, setHands] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchHands = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch("/api/hands");
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || "Failed to fetch hands");
+        // Map API hands to HandCard props
+        setHands(
+          data.data.hands.map((hand: any) => ({
+            id: hand.id,
+            title: hand.title,
+            stakes: hand.stakes,
+            tags: hand.tags?.map((t: any) => t.tag?.name) || [],
+            hero_cards: hand.hero_cards,
+            board: hand.board,
+            createdAt: hand.createdAt || hand.created_at,
+            is_quiz: hand.is_quiz,
+            comment_count: hand._count?.comments ?? 0,
+            upvote_count: hand._count?.votes ?? 0,
+            username: hand.user?.name || "Unknown",
+            avatar_url: hand.user?.image || null,
+            user_id: hand.user?.id || "",
+            quiz_question: hand.quiz_question,
+            hand_summary: hand.hand_summary,
+            is_draft: hand.is_draft,
+            is_own_post: false,
+          }))
+        );
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load hands");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchHands();
+  }, []);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -48,11 +56,19 @@ export default function Home() {
         </button>
       </div>
 
-      <div className="space-y-4">
-        {MOCK_HANDS.map((hand) => (
-          <HandCard key={hand.id} {...hand} />
-        ))}
-      </div>
+      {loading ? (
+        <div>Loading...</div>
+      ) : error ? (
+        <div className="text-red-500">{error}</div>
+      ) : (
+        <div className="space-y-4">
+          {hands.length === 0 ? (
+            <div className="text-gray-500">No hands found.</div>
+          ) : (
+            hands.map((hand) => <HandCard key={hand.id} {...hand} />)
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -27,11 +27,7 @@ export async function GET(request: Request) {
     const where = {
       ...(tag && {
         tags: {
-          some: {
-            tag: {
-              name: tag,
-            },
-          },
+          has: tag,
         },
       }),
       ...(userId && { userId }),
@@ -49,20 +45,15 @@ export async function GET(request: Request) {
               image: true,
             },
           },
-          tags: {
-            include: {
-              tag: true,
-            },
-          },
           _count: {
             select: {
               comments: true,
-              votes: true,
+              Upvote: true,
             },
           },
         },
         orderBy: {
-          createdAt: "desc",
+          created_at: "desc",
         },
         skip: (page - 1) * limit,
         take: limit,
