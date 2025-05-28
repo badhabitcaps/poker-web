@@ -8,6 +8,8 @@ interface PokerCardsProps {
 }
 
 export function PokerCards({ cards, label, variant = "hero", className }: PokerCardsProps) {
+  const safeCards = cards ?? [];
+
   const getCardColor = (card: string) => {
     if (!card) return "text-gray-400";
     const suit = card.slice(-1).toLowerCase();
@@ -33,7 +35,7 @@ export function PokerCards({ cards, label, variant = "hero", className }: PokerC
         <span className="text-sm font-semibold text-gray-600">{label}</span>
       )}
       <div className="flex gap-2">
-        {cards.map((card, index) => (
+        {safeCards.map((card, index) => (
           <div
             key={index}
             className={cn(

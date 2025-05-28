@@ -54,27 +54,19 @@ export async function GET() {
 
     // Map DB fields to camelCase for frontend
     const mappedHands = hands.map((hand: any) => ({
-      id: hand.id,
-      title: hand.title,
-      stakes: hand.stakes,
-      tags: [],
-      hero_cards: hand.hero_cards,
-      board: hand.board,
+      ...hand,
       createdAt: hand.created_at,
-      is_quiz: false,
-      comment_count: hand._count.comments,
-      upvote_count: hand._count.Upvote,
-      username: user.name || "",
-      avatar_url: user.image || null,
-      user_id: user.id,
-      quiz_question: undefined,
-      hand_summary: hand.hand_summary,
-      is_draft: false,
-      is_own_post: true,
+      heroCards: hand.hero_cards,
+      summary: hand.hand_summary,
+      isQuiz: hand.is_quiz,
+      quizQuestion: hand.quiz_question,
     }));
-
+    const mappedUser = {
+      ...user,
+      createdAt: user.createdAt || user.created_at,
+    };
     return NextResponse.json({
-      user,
+      user: mappedUser,
       hands: mappedHands,
     });
   } catch (error) {

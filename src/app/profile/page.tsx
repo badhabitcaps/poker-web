@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { ErrorMessage } from "@/components/ui/error-message";
-import { HandCard } from "@/components/hand-card";
+import { HandCard, HandCardProps } from "@/components/hand-card";
+import { useSocketIO } from "@/hooks/useSocket";
 
 interface User {
   id: string;
@@ -35,7 +36,7 @@ export default function ProfilePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
-  const [hands, setHands] = useState<Hand[]>([]);
+  const [hands, setHands] = useState<HandCardProps[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,7 +53,27 @@ export default function ProfilePage() {
         if (!response.ok) throw new Error("Failed to fetch user data");
         const data = await response.json();
         setUser(data.user);
-        setHands(data.hands);
+        setHands(
+          data.hands.map((hand: any) => ({
+            id: hand.id,
+            title: hand.title,
+            stakes: hand.stakes,
+            tags: hand.tags?.map((t: any) => t.tag?.name) || [],
+            hero_cards: hand.hero_cards || hand.heroCards || [],
+            board: hand.board || [],
+            createdAt: hand.createdAt || hand.created_at,
+            is_quiz: hand.is_quiz || hand.isQuiz || false,
+            comment_count: hand._count?.comments ?? 0,
+            upvote_count: hand._count?.Upvote ?? hand._count?.votes ?? 0,
+            username: data.user.name || "You",
+            avatar_url: data.user.image || null,
+            user_id: data.user.id,
+            quiz_question: hand.quiz_question || hand.quizQuestion || "",
+            hand_summary: hand.hand_summary || hand.summary || "",
+            is_draft: hand.is_draft || false,
+            is_own_post: true,
+          }))
+        );
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load profile");
       } finally {
@@ -64,6 +85,61 @@ export default function ProfilePage() {
       fetchUserData();
     }
   }, [status]);
+
+  // Real-time updates for hands
+  useSocketIO("hands:update", (data: { hands: any[] }) => {
+    if (!session?.user?.id) return;
+    setHands(
+      data.hands
+        .filter((hand: any) => hand.userId === session.user.id)
+        .map((hand: any) => ({
+          id: hand.id,
+          title: hand.title,
+          stakes: hand.stakes,
+          tags: hand.tags?.map((t: any) => t.tag?.name) || [],
+          hero_cards: hand.hero_cards || hand.heroCards || [],
+          board: hand.board || [],
+          createdAt: hand.createdAt || hand.created_at,
+          is_quiz: hand.is_quiz || hand.isQuiz || false,
+          comment_count: hand._count?.comments ?? 0,
+          upvote_count: hand._count?.Upvote ?? hand._count?.votes ?? 0,
+          username: session.user.name || "You",
+          avatar_url: session.user.image || null,
+          user_id: session.user.id,
+          quiz_question: hand.quiz_question || hand.quizQuestion || "",
+          hand_summary: hand.hand_summary || hand.summary || "",
+          is_draft: hand.is_draft || false,
+          is_own_post: true,
+        }))
+    );
+  });
+
+  useSocketIO("hand:new", (data: { hand: any }) => {
+    if (!session?.user?.id) return;
+    if (data.hand.userId !== session.user.id) return;
+    setHands((prev) => [
+      {
+        id: data.hand.id,
+        title: data.hand.title,
+        stakes: data.hand.stakes,
+        tags: data.hand.tags?.map((t: any) => t.tag?.name) || [],
+        hero_cards: data.hand.hero_cards || data.hand.heroCards || [],
+        board: data.hand.board || [],
+        createdAt: data.hand.createdAt || data.hand.created_at,
+        is_quiz: data.hand.is_quiz || data.hand.isQuiz || false,
+        comment_count: data.hand._count?.comments ?? 0,
+        upvote_count: data.hand._count?.Upvote ?? data.hand._count?.votes ?? 0,
+        username: session.user.name || "You",
+        avatar_url: session.user.image || null,
+        user_id: session.user.id,
+        quiz_question: data.hand.quiz_question || data.hand.quizQuestion || "",
+        hand_summary: data.hand.hand_summary || data.hand.summary || "",
+        is_draft: data.hand.is_draft || false,
+        is_own_post: true,
+      },
+      ...prev,
+    ]);
+  });
 
   if (status === "loading" || loading) {
     return (

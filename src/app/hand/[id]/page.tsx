@@ -8,13 +8,18 @@ import { useHand } from "@/hooks/useHand";
 import { useComments } from "@/hooks/useComments";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
-import { Heart, Bookmark, MessageCircle } from "lucide-react";
+import { Heart, Bookmark, MessageCircle, Share2, Clock, DollarSign } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { CommentSection } from "@/components/CommentSection";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { ErrorMessage } from "@/components/ErrorMessage";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { useParams } from "next/navigation";
 
-export default function HandDetail({ params }: { params: { id: string } }) {
+export default function HandDetail() {
+  const params = useParams();
+  const id = params.id as string;
   const { data: session } = useSession();
   const {
     hand,
@@ -26,14 +31,14 @@ export default function HandDetail({ params }: { params: { id: string } }) {
     isSaved,
     voteCount,
     refresh: refreshHand,
-  } = useHand(params.id);
+  } = useHand(id);
   const {
     comments,
     loading: commentsLoading,
     error: commentsError,
     addComment,
     refresh: refreshComments,
-  } = useComments(params.id);
+  } = useComments(id);
 
   if (handLoading) {
     return <LoadingSpinner />;
@@ -50,7 +55,7 @@ export default function HandDetail({ params }: { params: { id: string } }) {
   return (
     <div className="container max-w-4xl mx-auto py-8 space-y-8">
       <Card>
-        <CardHeader className="flex flex-row items-center gap-4 p-4">
+        <CardHeader className="flex flex-row items-center justify-between gap-4 p-4">
           <div className="flex items-center gap-3">
             {hand.user.image ? (
               <Image
@@ -74,59 +79,71 @@ export default function HandDetail({ params }: { params: { id: string } }) {
               </span>
             </div>
           </div>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" className="text-gray-500">
+              <Share2 className="h-4 w-4" />
+            </Button>
+          </div>
         </CardHeader>
 
-        <CardContent className="p-4 pt-0">
-          <h1 className="mb-2 text-2xl font-bold">{hand.title}</h1>
+        <CardContent className="p-4 pt-0 space-y-6">
+          <div>
+            <h1 className="text-2xl font-bold mb-2">{hand.title}</h1>
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <DollarSign className="h-4 w-4" />
+              <span>{hand.stakes}</span>
+              <Clock className="h-4 w-4 ml-2" />
+              <span>{formatDistanceToNow(new Date(hand.createdAt), { addSuffix: true })}</span>
+            </div>
+          </div>
 
-          <div className="mb-3 flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2">
             {hand.isQuiz && (
-              <span className="rounded-full bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-800">
+              <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
                 Quiz
-              </span>
+              </Badge>
             )}
             {hand.tags.map(({ tag }) => (
-              <span
-                key={tag.name}
-                className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600"
-              >
+              <Badge key={tag.name} variant="secondary">
                 {tag.name}
-              </span>
+              </Badge>
             ))}
           </div>
 
-          <div className="mb-6 flex items-center gap-3">
-            <PokerCards cards={hand.heroCards} variant="hero" />
+          <div className="bg-gray-50 rounded-lg p-4">
+            <div className="mb-4">
+              <h3 className="text-sm font-medium text-gray-500 mb-2">Hero's Cards</h3>
+              <PokerCards cards={hand.heroCards} variant="hero" />
+            </div>
             {hand.board.length > 0 && (
-              <>
-                <div className="h-10 w-px bg-gray-200" />
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 mb-2">Board</h3>
                 <PokerCards cards={hand.board} variant="board" />
-              </>
+              </div>
             )}
           </div>
 
-          <div className="mb-6">
-            <h2 className="mb-2 text-lg font-semibold">
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold">
               {hand.isQuiz ? "Quiz Question" : "Hand Summary"}
             </h2>
-            <p className="text-gray-600">
+            <p className="text-gray-600 whitespace-pre-wrap">
               {hand.isQuiz ? hand.quizQuestion : hand.summary}
             </p>
           </div>
 
-          <div className="flex items-center justify-between border-t pt-4">
-            <span className="text-sm font-medium text-gray-600">
-              {hand.stakes}
-            </span>
+          <Separator />
+
+          <div className="flex items-center justify-between">
             <div className="flex gap-4">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={vote}
                 disabled={!session}
-                className={hasVoted ? "text-red-500" : ""}
+                className={`flex items-center gap-1 ${hasVoted ? "text-red-500" : ""}`}
               >
-                <Heart className="mr-1 h-4 w-4" />
+                <Heart className="h-4 w-4" />
                 <span>{voteCount}</span>
               </Button>
               <Button
@@ -134,12 +151,12 @@ export default function HandDetail({ params }: { params: { id: string } }) {
                 size="sm"
                 onClick={save}
                 disabled={!session}
-                className={isSaved ? "text-blue-500" : ""}
+                className={`flex items-center gap-1 ${isSaved ? "text-blue-500" : ""}`}
               >
-                <Bookmark className="mr-1 h-4 w-4" />
+                <Bookmark className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="sm" className="text-gray-500">
-                <MessageCircle className="mr-1 h-4 w-4" />
+              <Button variant="ghost" size="sm" className="flex items-center gap-1 text-gray-500">
+                <MessageCircle className="h-4 w-4" />
                 <span>{hand._count.comments}</span>
               </Button>
             </div>

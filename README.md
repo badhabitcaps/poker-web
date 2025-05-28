@@ -34,3 +34,16 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Real-Time Socket.IO Server
+
+To enable real-time features (comments, votes, etc.), start the Socket.IO server:
+
+```sh
+node socket-server.js
+```
+
+This will run a Socket.IO server on ws://localhost:3001/.
+
+- The frontend will connect automatically if this server is running.
+- For production, deploy this server and set the WebSocket URL via environment variables.

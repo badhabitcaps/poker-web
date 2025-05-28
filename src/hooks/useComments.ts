@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
-import { useSocket } from "./useSocket";
+import { useSocketIO } from "./useSocket";
+import { getSocket } from "@/lib/socket";
 
 interface Comment {
   id: string;
@@ -27,7 +28,6 @@ export function useComments(handId: string): UseCommentsResult {
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { subscribe, send } = useSocket();
 
   const fetchComments = useCallback(async () => {
     try {
@@ -72,6 +72,10 @@ export function useComments(handId: string): UseCommentsResult {
           throw new Error(data.error || "Failed to add comment");
         }
 
+        // Emit new comment event via Socket.IO
+        const socket = getSocket();
+        socket.emit("comment:new", { handId, comment: data.data });
+
         if (parentId) {
           setComments((prev) =>
             prev.map((comment) => {
@@ -99,63 +103,11 @@ export function useComments(handId: string): UseCommentsResult {
     fetchComments();
   }, [fetchComments]);
 
-  useEffect(() => {
-    const unsubscribe = subscribe(`comments:${handId}`, (data) => {
-      if (data.type === "new") {
-        if (data.parentId) {
-          setComments((prev) =>
-            prev.map((comment) => {
-              if (comment.id === data.parentId) {
-                return {
-                  ...comment,
-                  replies: [...comment.replies, data.comment],
-                };
-              }
-              return comment;
-            })
-          );
-        } else {
-          setComments((prev) => [data.comment, ...prev]);
-        }
-      } else if (data.type === "update") {
-        setComments((prev) =>
-          prev.map((comment) => {
-            if (comment.id === data.comment.id) {
-              return { ...comment, ...data.comment };
-            }
-            if (comment.replies.some((reply) => reply.id === data.comment.id)) {
-              return {
-                ...comment,
-                replies: comment.replies.map((reply) =>
-                  reply.id === data.comment.id ? { ...reply, ...data.comment } : reply
-                ),
-              };
-            }
-            return comment;
-          })
-        );
-      } else if (data.type === "delete") {
-        setComments((prev) =>
-          prev.map((comment) => {
-            if (comment.id === data.commentId) {
-              return null;
-            }
-            if (comment.replies.some((reply) => reply.id === data.commentId)) {
-              return {
-                ...comment,
-                replies: comment.replies.filter((reply) => reply.id !== data.commentId),
-              };
-            }
-            return comment;
-          }).filter(Boolean) as Comment[]
-        );
-      }
-    });
-
-    return () => {
-      unsubscribe();
-    };
-  }, [handId, subscribe]);
+  // Listen for real-time new comments
+  useSocketIO("comment:new", (data: { handId: string; comment: Comment }) => {
+    if (data.handId !== handId) return;
+    setComments((prev) => [data.comment, ...prev]);
+  });
 
   return {
     comments,

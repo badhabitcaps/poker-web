@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { z } from "zod";
+import { Server } from "socket.io";
+import { createServer } from "http";
 
 const handSchema = z.object({
   title: z.string().min(1).max(200),
@@ -14,6 +16,10 @@ const handSchema = z.object({
   quizQuestion: z.string().optional(),
   tags: z.array(z.string()).optional(),
 });
+
+// Create a Socket.IO server instance
+const httpServer = createServer();
+const io = new Server(httpServer);
 
 export async function GET(request: Request) {
   try {
@@ -61,10 +67,20 @@ export async function GET(request: Request) {
       prisma.hand.count({ where }),
     ]);
 
+    // Emit a Socket.IO event for the hands update
+    io.emit("hands:update", { hands });
+
     return NextResponse.json({
       success: true,
       data: {
-        hands,
+        hands: hands.map((hand: any) => ({
+          ...hand,
+          createdAt: hand.created_at,
+          heroCards: hand.hero_cards,
+          summary: hand.hand_summary,
+          isQuiz: hand.is_quiz,
+          quizQuestion: hand.quiz_question,
+        })),
         pagination: {
           total,
           pages: Math.ceil(total / limit),

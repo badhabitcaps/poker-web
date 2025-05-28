@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
-import { useSocket } from "./useSocket";
+import { useSocketIO } from "./useSocket";
 
 interface Hand {
   id: string;
@@ -48,7 +48,6 @@ export function useHand(id: string): UseHandResult {
   const [hasVoted, setHasVoted] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [voteCount, setVoteCount] = useState(0);
-  const { subscribe, send } = useSocket();
 
   const fetchHand = useCallback(async () => {
     try {
@@ -151,18 +150,14 @@ export function useHand(id: string): UseHandResult {
     fetchSaveStatus();
   }, [fetchHand, fetchVoteStatus, fetchSaveStatus]);
 
-  useEffect(() => {
-    const unsubscribe = subscribe(`hand:${id}`, (data) => {
-      setHand((prev) => {
-        if (!prev) return data;
-        return { ...prev, ...data };
-      });
+  // Listen for real-time hand updates
+  useSocketIO("hand:update", (data: { handId: string; hand: Hand }) => {
+    if (data.handId !== id) return;
+    setHand((prev) => {
+      if (!prev) return data.hand;
+      return { ...prev, ...data.hand };
     });
-
-    return () => {
-      unsubscribe();
-    };
-  }, [id, subscribe]);
+  });
 
   return {
     hand,
