@@ -1,0 +1,102 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                      String    @id @default(cuid())
+  name                    String?
+  email                   String?   @unique
+  emailVerified           DateTime?
+  emailVerificationToken  String?   @unique
+  emailVerificationExpiry DateTime?
+  image                   String?
+  password                String?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+  Account                 Account[]
+  comments                Comment[]
+  hands                   Hand[]
+  Session                 Session[]
+  Upvote                  Upvote[]
+}
+
+model Hand {
+  id            String    @id @default(cuid())
+  title         String
+  stakes        String
+  tags          String[]
+  hero_cards    String[]
+  board         String[]
+  created_at    DateTime  @default(now())
+  is_quiz       Boolean   @default(false)
+  quiz_question String?
+  hand_summary  String?
+  is_draft      Boolean   @default(false)
+  userId        String
+  comments      Comment[]
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Upvote        Upvote[]
+}
+
+model Comment {
+  id         String   @id @default(cuid())
+  content    String
+  created_at DateTime @default(now())
+  userId     String
+  handId     String
+  hand       Hand     @relation(fields: [handId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Upvote     Upvote[]
+}
+
+model Account {
+  id                String  @id
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  User              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  User         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Upvote {
+  id        String   @id
+  userId    String
+  handId    String?
+  commentId String?
+  Comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  Hand      Hand?    @relation(fields: [handId], references: [id], onDelete: Cascade)
+  User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, commentId])
+  @@unique([userId, handId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
